@@ -2,7 +2,6 @@
 from decimal import Decimal
 import os
 
-
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -30,10 +29,46 @@ from schemas.compra import CompraCrear
 from schemas.venta import VentaCrear
 
 
+# --------------------------------------------------
+# CONFIGURACIÓN DE LA API
+# --------------------------------------------------
+
 app = FastAPI(
     title="Sistema Minimarket Criss",
     description="API para gestionar productos, compras, ventas y stock.",
     version="1.0.0",
+)
+
+
+# --------------------------------------------------
+# CONFIGURACIÓN CORS
+# --------------------------------------------------
+# En Render, configura la variable CORS_ORIGINS con la URL
+# real de Vercel y, si corresponde, los orígenes locales.
+#
+# Ejemplo:
+# CORS_ORIGINS=https://tu-proyecto.vercel.app,http://localhost:5173
+#
+# No agregues rutas como /api/v1 ni una barra final a los
+# orígenes. Cada origen debe incluir protocolo y dominio.
+
+origenes_configurados = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+)
+
+origenes = [
+    origen.strip().rstrip("/")
+    for origen in origenes_configurados.split(",")
+    if origen.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origenes,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -46,19 +81,6 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-origenes = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-app.add_middleware(CORSMiddleware, allow_origins=origenes)
-
 @app.post("/api/v1/auth/login", tags=["Autenticación"])
 def iniciar_sesion(
     datos: LoginRequest,
@@ -66,9 +88,11 @@ def iniciar_sesion(
 ):
     email = datos.email.strip().lower()
 
-    usuario = db.query(Usuario).filter(
-        Usuario.email == email
-    ).first()
+    usuario = (
+        db.query(Usuario)
+        .filter(Usuario.email == email)
+        .first()
+    )
 
     if (
         usuario is None
@@ -141,10 +165,14 @@ def obtener_producto(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(obtener_usuario_actual),
 ):
-    producto = db.query(Producto).filter(
-        Producto.id == producto_id,
-        Producto.estado.is_(True),
-    ).first()
+    producto = (
+        db.query(Producto)
+        .filter(
+            Producto.id == producto_id,
+            Producto.estado.is_(True),
+        )
+        .first()
+    )
 
     if producto is None:
         raise HTTPException(
@@ -169,7 +197,6 @@ def crear_producto(
     ),
 ):
     producto = Producto(**datos.model_dump())
-
     db.add(producto)
 
     try:
@@ -179,7 +206,10 @@ def crear_producto(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No se pudo registrar el producto. Verifica que el código no esté duplicado.",
+            detail=(
+                "No se pudo registrar el producto. "
+                "Verifica que el código no esté duplicado."
+            ),
         )
 
     return producto
@@ -198,10 +228,14 @@ def actualizar_producto(
         exigir_roles("ADMINISTRADOR", "ENCARGADO_ALMACEN")
     ),
 ):
-    producto = db.query(Producto).filter(
-        Producto.id == producto_id,
-        Producto.estado.is_(True),
-    ).first()
+    producto = (
+        db.query(Producto)
+        .filter(
+            Producto.id == producto_id,
+            Producto.estado.is_(True),
+        )
+        .first()
+    )
 
     if producto is None:
         raise HTTPException(
@@ -219,7 +253,10 @@ def actualizar_producto(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No se pudo actualizar el producto. Verifica que el código no esté duplicado.",
+            detail=(
+                "No se pudo actualizar el producto. "
+                "Verifica que el código no esté duplicado."
+            ),
         )
 
     return producto
@@ -237,10 +274,14 @@ def desactivar_producto(
         exigir_roles("ADMINISTRADOR", "ENCARGADO_ALMACEN")
     ),
 ):
-    producto = db.query(Producto).filter(
-        Producto.id == producto_id,
-        Producto.estado.is_(True),
-    ).first()
+    producto = (
+        db.query(Producto)
+        .filter(
+            Producto.id == producto_id,
+            Producto.estado.is_(True),
+        )
+        .first()
+    )
 
     if producto is None:
         raise HTTPException(
@@ -362,7 +403,10 @@ def registrar_compra(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo registrar la compra. Verifica la configuración y los datos.",
+            detail=(
+                "No se pudo registrar la compra. "
+                "Verifica la configuración y los datos."
+            ),
         )
 
 
@@ -501,7 +545,10 @@ def registrar_venta(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo registrar la venta. Verifica la configuración y los datos.",
+            detail=(
+                "No se pudo registrar la venta. "
+                "Verifica la configuración y los datos."
+            ),
         )
 
 
