@@ -1,5 +1,7 @@
 
 from decimal import Decimal
+import os
+
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,7 +56,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+origenes = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+app.add_middleware(CORSMiddleware, allow_origins=origenes)
 
 @app.post("/api/v1/auth/login", tags=["Autenticación"])
 def iniciar_sesion(
